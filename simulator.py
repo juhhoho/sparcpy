@@ -1,5 +1,3 @@
-import re
-
 class SPARCSimulator:
     def __init__(self):
         # 메모리 초기화 (256 바이트)
@@ -15,32 +13,31 @@ class SPARCSimulator:
         self.instructions = {}
 
     def init_register(self):
-        """레지스터 초기화 함수"""
-        # %i7은 리턴 주소
+        # 일반 레지스터
         self.registers = {f"%g{i}": 0 for i in range(8)}  # %g0 - %g7 (전역 레지스터)
-        self.registers.update({f"%o{i}": 0 for i in range(8)})  # %o0 - %o7 (출력 레지스터)
+        self.registers.update({f"%o{i}": 0 for i in range(8)})  # %o0 - %o7 (출력 레지스터), %i7은 리턴 주소
         self.registers.update({f"%l{i}": 0 for i in range(8)})  # %l0 - %l7 (지역 레지스터)
         self.registers.update({f"%i{i}": 0 for i in range(8)})  # %i0 - %i7 (입력 레지스터)
 
-        # 특수 레지스터: 스택 포인터, 프레임 포인터 등
+        # 특수 레지스터
         self.registers['%sp'] = 0  # 스택 포인터
         self.registers['%fp'] = 0  # 프레임 포인터
 
-        # 스택 포인터 초기화 (메모리 맨 끝에서 스택 시작)
-        self.set_register_value('%sp', len(self.memory) - 1)
+        self.set_register_value('%sp', len(self.memory) - 1) # 스택 포인터 초기화 (메모리 맨 끝에서 스택 시작)
         self.set_register_value('%fp', self.get_register_value('%sp'))
 
+    # .S에서 명령어를 읽어 프로그램에 로드
     def load_program_from_file(self, file_path):
-        """어셈블리 파일에서 명령어를 읽어 프로그램에 로드"""
+
         try:
             with open(file_path, 'r') as f:
                 asm_code = f.readlines()
-            
+
             current_label = None
             for line in asm_code:
                 # 주석 제거
                 line = line.split('!')[0].strip()
-                # .으로 시작하는 메타데이터 무시
+                # 메타데이터 무시
                 if line.startswith('.'):
                     continue
                 # 빈 줄 무시
@@ -59,21 +56,19 @@ class SPARCSimulator:
         except IOError:
             print(f"파일을 읽는 중 오류가 발생했습니다: {file_path}")
 
+    # 주어진 라벨의 명령어를 순차적으로 실행
     def execute(self, label='main', debug=False):
-        """주어진 라벨의 명령어를 순차적으로 실행"""
         if label not in self.instructions:
             raise ValueError(f"라벨 '{label}'을(를) 찾을 수 없습니다.")
 
         self.program_counter = 0  # 해당 라벨에서 시작하는 프로그램 카운터
-        instructions = self.instructions[label]  # 해당 라벨의 명령어들 가져오기
+        instructions = self.instructions[label]  # 해당 라벨의 명령어 리스트 가져오기
 
         while self.program_counter < len(instructions):
             instruction = instructions[self.program_counter]
-            # print(f"현재 라벨: {label}, 현재 instruction: {instruction}")
 
             if debug:
                 print(f"현재 실행중인 명령어: \"{instruction}\"")
-
 
             # ret 명령어 처리
             if instruction.startswith("ret"):
@@ -85,14 +80,13 @@ class SPARCSimulator:
             # 프로그램 카운터 증가
             self.program_counter += 1
 
-            print("#디버깅 -------------------")
+            print("#Debugging -------------------")
             print(self.list_registers())  # 지우기
             print(self.memory)  # 지우기
-
             print("#-------------------------")
 
+    # 어셈블리 명령어를 특정 핸들러로 보냄
     def handle_instruction(self, instruction):
-        """어셈블리 명령어를 특정 핸들러로 보냄"""
         instruction = instruction.split("!")[0].strip()  # 주석 제거
         if instruction == "" or ":" in instruction:
             return  # 빈 라인 및 라벨 무시
@@ -113,9 +107,8 @@ class SPARCSimulator:
                 handler(instruction)
                 break
 
+    # save 명령어 처리 (현재 레지스터 상태를 스택에 저장하고 새로운 스택 프레임 생성)
     def handle_save(self, instruction):
-        """save 명령어 처리 (현재 레지스터 상태를 스택에 저장하고 새로운 스택 프레임 생성)"""
-        print(f"Executing: {instruction}")
         _, src, offset, dest = instruction.split()
 
         # 쉼표 제거 및 int로 변환
@@ -129,8 +122,8 @@ class SPARCSimulator:
         self.set_register_value('%fp', sp_value)  # 현재 %sp 값을 %fp에 저장
         self.set_register_value('%sp', new_sp)  # %sp에 오프셋 값을 더해 새로운 스택 프레임 설정
 
+    # mov 명령어 처리
     def handle_mov(self, instruction):
-        """mov 명령어 처리"""
         _, src, dest = instruction.split()
         if src.strip(',').isdigit():
             src_value = int(src.strip(','))
@@ -138,41 +131,38 @@ class SPARCSimulator:
             src_value = self.get_register_value(src.strip(','))
         self.set_register_value(dest.strip(','), src_value)
 
+    # st 명령어 처리 (레지스터 값을 메모리에 저장)
     def handle_st(self, instruction):
-        """st 명령어 처리 (레지스터 값을 메모리에 저장)"""
         _, src, mem_addr = instruction.split()
         addr = self.get_memory_address(mem_addr)
         self.memory[addr] = self.get_register_value(src.strip(','))
 
+    # ld 명령어 처리 (메모리 값을 레지스터로 로드)
     def handle_ld(self, instruction):
-        """ld 명령어 처리 (메모리 값을 레지스터로 로드)"""
         _, mem_addr, dest = instruction.split()
         addr = self.get_memory_address(mem_addr)
         self.set_register_value(dest.strip(','), self.memory[addr])
 
+    # add 명령어 처리
     def handle_add(self, instruction):
-        """add 명령어 처리"""
         _, src1, src2, dest = instruction.split()
         val1 = self.get_register_value(src1.strip(','))
         val2 = self.get_register_value(src2.strip(','))
         self.set_register_value(dest.strip(','), val1 + val2)
 
+    # restore 명령어 처리 (프레임 복구)
     def handle_restore(self, instruction):
-        """restore 명령어 처리 (프레임 복구)"""
-        print(f"Executing: {instruction}")
         # %fp 값을 %sp로 복원하여 이전 스택 상태 복원
         self.set_register_value('%sp', self.get_register_value('%fp'))
 
-
+    # jmp 명령어 처리 (즉시 분기)
     def handle_jmp(self, instruction):
-        """jmp 명령어 처리 (즉시 분기)"""
         print(f"Executing: {instruction}")
         _, target_label = instruction.split()
         self.program_counter = self.find_label(target_label)
 
-
+    # ret 명령어 처리 (함수 반환)
     def handle_ret(self):
-        """ret 명령어 처리 (함수 반환)"""
         print(f"Executing: ret")
         # %i7 레지스터에 저장된 리턴 주소로 복귀
         return_address = self.get_register_value('%i7')
@@ -182,9 +172,8 @@ class SPARCSimulator:
             # 이전 명령어로 돌아가서 실행을 재개
             self.program_counter = return_address - 1  # 돌아온 주소에서 계속 실행
 
+    # call 명령어 처리 (함수 호출)
     def handle_call(self, instruction):
-        """call 명령어 처리 (함수 호출)"""
-        print(f"Executing: {instruction}")
         _, label_name = instruction.split()
 
         # 현재 프로그램 카운터 값 + 1을 %i7 (리턴 주소)에 저장
@@ -197,31 +186,31 @@ class SPARCSimulator:
         else:
             raise ValueError(f"함수 {label_name}을(를) 찾을 수 없습니다.")
 
+    # 해당 instruction set에서 특정 label이 존재하는 찾기
     def find_label(self, label_name):
         if label_name in self.instructions:
-            print(f"find_label({label_name}) 결과 {label_name}은 존재!")
+            print(f"find_label({label_name}) 결과 라벨 {label_name}은 존재합니다.")
             return True
         else:
-            print(f"find_label({label_name}) 결과 {label_name}은 존재하지 않음")
+            print(f"find_label({label_name}) 결과 라벨 {label_name}은 존재하지 않습니다.")
             return False;
 
-
+    # 레지스터 값을 반환
     def get_register_value(self, reg):
-        """레지스터 값을 반환"""
         reg = reg.strip(',')  # 쉼표 제거
         if reg not in self.registers:
             raise KeyError(f"잘못된 레지스터: {reg}")
         return self.registers[reg]
 
+    # 레지스터에 값을 설정
     def set_register_value(self, reg, value):
-        """레지스터에 값을 설정"""
         reg = reg.strip(',')  # 쉼표 제거
         if reg not in self.registers:
             raise KeyError(f"잘못된 레지스터: {reg}")
         self.registers[reg] = value
 
+    # 메모리 주소를 해석
     def get_memory_address(self, mem_addr):
-        """메모리 주소를 해석"""
         if mem_addr.endswith(','):
             mem_addr = mem_addr[:-1]
         if not (mem_addr.startswith('[') and mem_addr.endswith(']')):
@@ -261,7 +250,7 @@ class SPARCSimulator:
         # 메모리 주소 반환
         return self.get_register_value('%fp') + offset_value
 
-    # 디버깅용
+    # 레지스터와 값 포함 리스트
     def list_registers(self):
         reg_list = []
         for reg, value in self.registers.items():
@@ -271,6 +260,5 @@ class SPARCSimulator:
 
 if __name__ == "__main__":
     simulator = SPARCSimulator()
-    # 같은 디렉터리에 있는 test.S 파일을 읽어 실행
     simulator.load_program_from_file("test.S")
     simulator.execute("main",True)
