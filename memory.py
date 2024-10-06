@@ -14,3 +14,5 @@ class Memory:
 
     def __repr__(self):
         return str(self.memory)  # 배열 형태로 메모리 출력
+    def __sizeof__(self):
+        return len(self.memory)

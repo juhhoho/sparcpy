@@ -64,6 +64,8 @@ class SPARCSimulator:
         self.program_counter = 0  # 해당 라벨에서 시작하는 프로그램 카운터
         instructions = self.instructions[label]  # 해당 라벨의 명령어 리스트 가져오기
 
+        print(f"instructions: {instructions}")
+        print("*****************************", label)
         while self.program_counter < len(instructions):
             instruction = instructions[self.program_counter]
 
@@ -83,7 +85,10 @@ class SPARCSimulator:
             print("#Debugging -------------------")
             print(self.list_registers())  # 지우기
             print(self.memory)  # 지우기
-            print("#-------------------------")
+            print(self.program_counter)
+            print(self.get_register_value('%sp'))
+            print(self.get_register_value('%fp'))
+            print("#-----------------------------")
 
     # 어셈블리 명령어를 특정 핸들러로 보냄
     def handle_instruction(self, instruction):
@@ -150,16 +155,16 @@ class SPARCSimulator:
         val2 = self.get_register_value(src2.strip(','))
         self.set_register_value(dest.strip(','), val1 + val2)
 
-    # restore 명령어 처리 (프레임 복구)
-    def handle_restore(self, instruction):
-        # %fp 값을 %sp로 복원하여 이전 스택 상태 복원
-        self.set_register_value('%sp', self.get_register_value('%fp'))
-
     # jmp 명령어 처리 (즉시 분기)
     def handle_jmp(self, instruction):
         print(f"Executing: {instruction}")
         _, target_label = instruction.split()
         self.program_counter = self.find_label(target_label)
+
+    # restore 명령어 처리 (프레임 복구)
+    def handle_restore(self):
+        # %fp 값을 %sp로 복원하여 이전 스택 상태 복원
+        self.set_register_value('%sp', self.get_register_value('%fp'))
 
     # ret 명령어 처리 (함수 반환)
     def handle_ret(self):
@@ -254,11 +259,10 @@ class SPARCSimulator:
     def list_registers(self):
         reg_list = []
         for reg, value in self.registers.items():
-            reg_list.append((f"{reg}: {value}"))
-        reg_list.append(self.registers['%sp'], )
+            reg_list.append(f"{reg}: {value}")
         return reg_list
 
 if __name__ == "__main__":
     simulator = SPARCSimulator()
-    simulator.load_program_from_file("")
+    simulator.load_program_from_file("asm/test.s")
     simulator.execute("main",True)
