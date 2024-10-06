@@ -6,14 +6,17 @@ class SPARCSimulator:
     def __init__(self):
         self.memory = Memory()
         self.registers = Register(len(self.memory.memory))  # 메모리 크기를 전달
-        self.cache = Cache(self.memory)
+        self.cache = Cache(self.memory, 16)
         self.instructions = {}
         self.call_stack = []  # 호출 스택을 추가하여 PC 값을 관리
         self.program_counter = 0
 
         self.debug_info("#Start of Program ------------")
+        print(f"[memory init]:\n{self.memory}\n")
+        print(f"[cache init]:\n{self.cache}\n")
+        print(f"[register init]:\n{self.registers}\n")
 
-    # .S 파일로부터 프로그램을 로드
+    # .S 파일로부터 프로그램을 로드f
     def load_program_from_file(self, file_path):
         try:
             with open(file_path, 'r') as f:
@@ -65,10 +68,14 @@ class SPARCSimulator:
             self.program_counter += 1
 
             self.debug_info()
+            print(self.registers.registers, "\n")
 
         # 프로그램 종료
         if label == 'main':
             self.debug_info("#End of program --------------")
+            print(f"[cache state]{self.cache}\n")
+            print(f"[memory_state]\n{self.memory}\n")
+            print(f"[register state]\n{self.registers}\n")
 
     # 디버깅 정보 출력
     def debug_info(self, msg = "#Info of Debug --------------"):
@@ -77,7 +84,7 @@ class SPARCSimulator:
         print(f"%fp: {self.registers.get('%fp')}")
         print(f"call_stack: {self.call_stack}")
         print(f"program_counter: {self.program_counter}")
-        print("#-----------------------------\n")
+        print("#-----------------------------")
 
     # 명령어 처리
     def handle_instruction(self, instruction):
@@ -98,12 +105,21 @@ class SPARCSimulator:
         operation, arg1, arg2 = instruction.split()
         if operation == "ld":
             address = self.parse_address(arg1)
+            print(f"[before cache state]\n{self.cache}\n")
+            print(f"[before memory_state]\n{self.memory}\n")
             value = self.cache.access(address)
             self.registers.set(arg2.strip(','), value)
+            print(f"[after cache state]\n{self.cache}\n")
+            print(f"[after memory_state]\n{self.memory}\n")
         elif operation == "st":
             address = self.parse_address(arg2)
+            print(f"[before cache state]\n{self.cache}\n")
+            print(f"[before memory_state]\n{self.memory}\n")
             value = self.registers.get(arg1.strip(','))
-            self.memory.write(address, value)
+            # 캐시를 먼저 접근하여 캐시가 있으면 갱신하고, 없으면 메모리로 쓰기 전에 캐시에 로드 후 갱신
+            self.cache.write(address, value)
+            print(f"[after cache state]\n{self.cache}\n")
+            print(f"[after memory_state]\n{self.memory}\n")
 
     # mov 명령어 처리
     def handle_mov(self, instruction):
@@ -137,6 +153,7 @@ class SPARCSimulator:
             regs = [reg.strip(',') for reg in instruction.split()[1:]]
             self.registers.set(regs[2], self.registers.get(regs[0]) + self.registers.get(regs[1]))
 
+        self.memory.write(self.registers.get('%sp'), 0)
         self.registers.set('%sp', self.registers.get('%fp'))
         if self.memory.read(self.registers.get('%fp')) == 0:
             self.registers.set('%fp', self.memory.__sizeof__() - 1)
@@ -169,6 +186,6 @@ class SPARCSimulator:
         new_sp = sp_value + offset_value
         if new_sp < 0:
             raise ValueError("스택 포인터가 음수입니다.")
-        self.memory.write(new_sp, self.registers.get('%fp'))
+        self.memory.write(new_sp, self.registers.get('%sp'))
         self.registers.set('%fp', sp_value)
         self.registers.set('%sp', new_sp)
