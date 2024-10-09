@@ -6,7 +6,7 @@ class SPARCSimulator:
     def __init__(self):
         self.memory = Memory()
         self.registers = Register(len(self.memory.memory))  # 메모리 크기를 전달
-        self.cache = Cache(self.memory, 16, 2,2)
+        self.cache = Cache(self.memory)
         self.instructions = {}
         self.call_stack = []  # 호출 스택을 추가하여 PC 값을 관리
         self.program_counter = 0
