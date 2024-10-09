@@ -11,7 +11,7 @@ class SPARCSimulator:
         self.instructions = {}
         self.call_stack = []
         self.program_counter = 0
-        self.instruction_handler = InstructionHandler(self)  # InstructionHandler 인스턴스 추가
+        self.instruction_handler = InstructionHandler(self)
 
         self.debug_info("#Start of Program ------------")
         print(f"[register init]:\n{self.registers}\n")
@@ -79,18 +79,5 @@ class SPARCSimulator:
         print(f"call_stack: {self.call_stack}")
         print(f"program_counter: {self.program_counter}")
         print("#-----------------------------")
-
-    def parse_address(self, mem_addr):
-        base_reg, offset = mem_addr.strip('[],').split('+-')
-        return self.registers.get(base_reg) - int(offset)
-
-    def save_register_state(self, offset_value):
-        sp_value = self.registers.get('%sp')
-        new_sp = sp_value + offset_value
-        if new_sp < 0:
-            raise ValueError("스택 포인터가 음수입니다.")
-        self.memory.write(new_sp, self.registers.get('%sp'))
-        self.registers.set('%fp', sp_value)
-        self.registers.set('%sp', new_sp)
 
 

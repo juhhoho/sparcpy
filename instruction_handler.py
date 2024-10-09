@@ -17,7 +17,7 @@ class InstructionHandler:
             print(f"[before register_state]\n{self.simulator.registers}\n")
             print(f"[before cache state]\n{self.simulator.cache}\n")
             print(f"[before memory_state]\n{self.simulator.memory}\n")
-            address = self.simulator.parse_address(arg1)
+            address = self.parse_address(arg1)
             value = self.simulator.cache.access_cache(address)
             self.simulator.registers.set(arg2.strip(','), value)
             print(f"[after register_state]\n{self.simulator.registers}\n")
@@ -27,12 +27,16 @@ class InstructionHandler:
             print(f"[before register_state]\n{self.simulator.registers}\n")
             print(f"[before cache state]\n{self.simulator.cache}\n")
             print(f"[before memory_state]\n{self.simulator.memory}\n")
-            address = self.simulator.parse_address(arg2)
+            address = self.parse_address(arg2)
             value = self.simulator.registers.get(arg1.strip(','))
             self.simulator.cache.write_cache(address, value)
             print(f"[after register_state]\n{self.simulator.registers}\n")
             print(f"[after cache state]\n{self.simulator.cache}\n")
             print(f"[after memory_state]\n{self.simulator.memory}\n")
+
+    def parse_address(self, mem_addr):
+        base_reg, offset = mem_addr.strip('[],').split('+-')
+        return self.simulator.registers.get(base_reg) - int(offset)
 
     def handle_mov(self, instruction):
         _, src, dest = instruction.split()
@@ -45,7 +49,16 @@ class InstructionHandler:
 
     def handle_save(self, instruction):
         _, src, offset, dest = instruction.split()
-        self.simulator.save_register_state(int(offset.strip(',')))
+        self.save_register_state(int(offset.strip(',')))  # 여기서 save_register_state를 직접 호출
+
+    def save_register_state(self, offset_value):
+        sp_value = self.simulator.registers.get('%sp')
+        new_sp = sp_value + offset_value
+        if new_sp < 0:
+            raise ValueError("스택 포인터가 음수입니다.")
+        self.simulator.memory.write(new_sp, sp_value)  # 메모리에 스택 포인터 저장
+        self.simulator.registers.set('%fp', sp_value)  # 프레임 포인터 업데이트
+        self.simulator.registers.set('%sp', new_sp)  # 스택 포인터 업데이트
 
     def handle_ret(self, instruction):
         if self.simulator.call_stack:

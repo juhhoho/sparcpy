@@ -21,6 +21,7 @@ class Register:
         self.registers[reg] = value
 
 
+
     def __repr__(self):
         groups = {
             "<global>": [f"%g{i}" for i in range(8)],
