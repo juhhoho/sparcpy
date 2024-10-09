@@ -1,7 +1,7 @@
 class Memory:
     def __init__(self, size=256):
         self.memory = [0] * size
-
+        self.size = size
     def read(self, address):
         if address < 0 or address >= len(self.memory):
             raise ValueError(f"Invalid memory address: {address}")

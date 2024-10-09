@@ -52,18 +52,20 @@ class CacheSet:
 
 
 class Cache:
-    def __init__(self, memory, cache_size, block_size, n_way=1):
+    def __init__(self, memory, cache_size = 16, block_size = 4, n_way=2):
         self.memory = memory  # 메모리 객체
         self.cache_size = cache_size  # 캐시 크기
         self.block_size = block_size  # 블록 크기
-        self.n_way = n_way  # n-way 세트 연관 방식
+        self.n_way = n_way  # n-way 세트 연관 방식(한 set 에 block n개)
         self.num_sets = cache_size // (block_size * n_way)  # 캐시 내의 세트 수 계산
         self.sets = [CacheSet(n_way) for _ in range(self.num_sets)]  # 세트 배열 초기화
 
     # 캐시에서 데이터를 찾고, 없으면 메모리에서 로드
     def access_cache(self, address):
-        # 주소에서 태그와 인덱스 추출
+        # 주소의 중간 비트/ cache set가 cache에서 어떤 위치에 존재하는지를 나타냄
         index = (address // self.block_size) % self.num_sets
+
+        # 주소의 상위 비트/ 캐시블록이 어느 메모리 주소와 연관되는지 나타냄
         tag = address // (self.block_size * self.num_sets)
 
         # 해당 세트에서 태그에 맞는 블록을 찾음
@@ -71,7 +73,7 @@ class Cache:
         block = cache_set.find_block(tag)
 
         if block:
-            print(f"Cache hit: {block.data}")
+            print(f"Cache Hit: set[{index}] - tag[{tag}] - data[{block.data}]\n")
             return block.data
         else:
             print("Cache miss")

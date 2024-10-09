@@ -1,4 +1,4 @@
-from sparc_simulator import SPARCSimulator
+from simulator import SPARCSimulator
 
 if __name__ == "__main__":
     simulator = SPARCSimulator()
