@@ -6,15 +6,16 @@ class SPARCSimulator:
     def __init__(self):
         self.memory = Memory()
         self.registers = Register(len(self.memory.memory))  # 메모리 크기를 전달
-        self.cache = Cache(self.memory, 16)
+        self.cache = Cache(self.memory, 16, 2,2)
         self.instructions = {}
         self.call_stack = []  # 호출 스택을 추가하여 PC 값을 관리
         self.program_counter = 0
 
         self.debug_info("#Start of Program ------------")
-        print(f"[memory init]:\n{self.memory}\n")
-        print(f"[cache init]:\n{self.cache}\n")
+
         print(f"[register init]:\n{self.registers}\n")
+        print(f"[cache init]:\n{self.cache}\n")
+        print(f"[memory init]:\n{self.memory}\n")
 
     # .S 파일로부터 프로그램을 로드f
     def load_program_from_file(self, file_path):
@@ -68,14 +69,13 @@ class SPARCSimulator:
             self.program_counter += 1
 
             self.debug_info()
-            print(self.registers.registers, "\n")
 
         # 프로그램 종료
         if label == 'main':
             self.debug_info("#End of program --------------")
+            print(f"[register state]\n{self.registers}\n")
             print(f"[cache state]{self.cache}\n")
             print(f"[memory_state]\n{self.memory}\n")
-            print(f"[register state]\n{self.registers}\n")
 
     # 디버깅 정보 출력
     def debug_info(self, msg = "#Info of Debug --------------"):
@@ -105,19 +105,23 @@ class SPARCSimulator:
         operation, arg1, arg2 = instruction.split()
         if operation == "ld":
             address = self.parse_address(arg1)
+            print(f"[before register_state]\n{self.registers}\n")
             print(f"[before cache state]\n{self.cache}\n")
             print(f"[before memory_state]\n{self.memory}\n")
-            value = self.cache.access(address)
+            value = self.cache.access_cache(address)
             self.registers.set(arg2.strip(','), value)
+            print(f"[after register_state]\n{self.registers}\n]")
             print(f"[after cache state]\n{self.cache}\n")
             print(f"[after memory_state]\n{self.memory}\n")
         elif operation == "st":
             address = self.parse_address(arg2)
+            print(f"[before register_state]\n{self.registers}\n]")
             print(f"[before cache state]\n{self.cache}\n")
             print(f"[before memory_state]\n{self.memory}\n")
             value = self.registers.get(arg1.strip(','))
             # 캐시를 먼저 접근하여 캐시가 있으면 갱신하고, 없으면 메모리로 쓰기 전에 캐시에 로드 후 갱신
-            self.cache.write(address, value)
+            self.cache.write_cache(address, value)
+            print(f"[after register_state]\n{self.registers}\n]")
             print(f"[after cache state]\n{self.cache}\n")
             print(f"[after memory_state]\n{self.memory}\n")
 

@@ -20,9 +20,17 @@ class Register:
             raise ValueError(f"Invalid register: {reg}")
         self.registers[reg] = value
 
-    # 레지스터와 값 포함 리스트
-    def list_registers(self):
+
+    def __repr__(self):
+        groups = {
+            "<global>": [f"%g{i}" for i in range(8)],
+            "<output>": [f"%o{i}" for i in range(8)],
+            "<local>": [f"%l{i}" for i in range(8)],
+            "<input>": [f"%i{i}" for i in range(8)],
+            "<special>": ["%sp", "%fp"]
+        }
+
         reg_list = []
-        for reg, value in self.registers.items():
-            reg_list.append(f"{reg}: {value}")
-        return reg_list
+        for group, regs in groups.items():
+            reg_list.append(f"{group}: " + ", ".join([f"[{reg}]: {self.registers[reg]}" for reg in regs]))
+        return "\n".join(reg_list)
