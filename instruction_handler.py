@@ -61,9 +61,8 @@ class InstructionHandler:
         self.simulator.registers.set('%sp', new_sp)  # 스택 포인터 업데이트
 
     def handle_ret(self, instruction):
-        if self.simulator.call_stack:
-            return_address = self.simulator.registers.get('%i7')
-            self.simulator.program_counter = return_address
+        if len(self.simulator.call_stack) != 0:
+            self.simulator.program_counter = self.simulator.call_stack.pop()
         else:
             print("No return address found, ready for ending program.")
 
@@ -72,24 +71,30 @@ class InstructionHandler:
             regs = [reg.strip(',') for reg in instruction.split()[1:]]
             self.simulator.registers.set(regs[2], self.simulator.registers.get(regs[0]) + self.simulator.registers.get(regs[1]))
 
+        # %sp clear
         self.simulator.memory.write(self.simulator.registers.get('%sp'), 0)
+
+        # %sp 복구(by %fp)
         self.simulator.registers.set('%sp', self.simulator.registers.get('%fp'))
 
-        if self.simulator.memory.read(self.simulator.registers.get('%fp')) == 0:
-            self.simulator.registers.set('%fp', self.simulator.memory.size - 1)
-        else:
-            self.simulator.registers.set('%fp', self.simulator.memory.read(self.simulator.registers.get('%fp')))
+        # %fp 복구(by %i7)
+        self.simulator.registers.set('%fp', self.simulator.registers.get('%i7'))
 
     def handle_call(self, instruction):
         _, label_name = instruction.split()
-        return_address = self.simulator.program_counter + 1
-        self.simulator.call_stack.append(return_address)
+
+        # call stack에 호출 함수의 pc 저장
+        return_program_counter = self.simulator.program_counter
+        self.simulator.call_stack.append(return_program_counter)
+
+        # 현재 %fp를 기준으로 %i7에 return address를 저장
+        return_address = self.simulator.registers.get("%fp")
         self.simulator.registers.set('%i7', return_address)
+
 
         if label_name in self.simulator.instructions:
             print(f"****************** label - <{label_name}> call******************")
             self.simulator.execute(label_name)
-            self.simulator.program_counter = self.simulator.call_stack.pop() - 1
             print(f"******************label - <{label_name}> return******************")
         else:
             raise ValueError(f"함수 {label_name}을(를) 찾을 수 없습니다.")
