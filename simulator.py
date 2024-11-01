@@ -76,6 +76,7 @@ class SPARCSimulator:
         print(msg)
         print(f"%sp: {self.registers.get('%sp')}")
         print(f"%fp: {self.registers.get('%fp')}")
+        print(f"%i7: {self.registers.get('%i7')}")
         print(f"call_stack: {self.call_stack}")
         print(f"program_counter: {self.program_counter}")
         print("#-----------------------------")
